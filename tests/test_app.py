@@ -50,5 +50,6 @@ def test_reset_needs_token(client, monkeypatch):
 
 def test_rate_limit(client, monkeypatch):
     monkeypatch.setattr(main, "MIN_GAP", 60)
+    monkeypatch.setattr(main.time, "monotonic", lambda: 1000.0)  # fixed clock: no dependence on machine uptime
     assert client.post("/api/react", json={"cid": "a", "kind": "clap"}).status_code == 200
     assert client.post("/api/react", json={"cid": "a", "kind": "clap"}).status_code == 429
