@@ -1,0 +1,13 @@
+[Unit]
+Description=Release loop: keep the cluster on the newest release
+After=k3s.service network-online.target time-sync.target
+Wants=network-online.target time-sync.target
+
+[Service]
+Environment=KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+ExecStart=/opt/pipeline-demo/pi/release-loop.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -3,7 +3,7 @@
 # Watch it live with: journalctl -fu release-loop
 REPO=${REPO:-https://github.com/teerakarna/pipeline-demo}
 IMAGE=${IMAGE:-ghcr.io/teerakarna/pipeline-demo}
-MANIFEST=${MANIFEST:-/opt/pipeline-demo/app.yaml}
+MANIFEST=${MANIFEST:-/opt/pipeline-demo/k8s/app.yaml}
 KUBECTL=${KUBECTL:-kubectl}
 EVERY=${EVERY:-5}
 TIMEOUT=${TIMEOUT:-120}
