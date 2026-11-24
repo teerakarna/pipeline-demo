@@ -93,10 +93,17 @@ The pull needs the package to be public. If it says unauthorized, make the packa
 Expect: three pods `1/1 Running`, and JSON with `"version":"v1"`. Check memory: `free -h` should leave well
 over 1 GB available.
 
-Reset token (kept in the cluster, not in the repo):
+Reset token. It is made on the Mac, kept outside the repo, and handed to the cluster:
 
-    kubectl create secret generic pipeline-demo --from-literal=reset-token="$(openssl rand -hex 16)"
+    # on the Mac, once
+    mkdir -p ~/.config/pipeline-demo
+    openssl rand -hex 16 > ~/.config/pipeline-demo/reset-token && chmod 600 ~/.config/pipeline-demo/reset-token
+    ssh <user>@pipeline-pi.local "kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml create secret generic pipeline-demo --from-literal=reset-token=$(cat ~/.config/pipeline-demo/reset-token)"
+
+    # on the Pi
     kubectl rollout restart deploy/pipeline-demo
+
+Expect: `secret/pipeline-demo created`. The token is briefly visible in the command line, so do this before class.
 
 ## 6. The release loop
 
@@ -104,8 +111,9 @@ Reset token (kept in the cluster, not in the repo):
     sudo systemctl daemon-reload && sudo systemctl enable --now release-loop
     journalctl -fu release-loop
 
-Expect: `watching https://github.com/teerakarna/pipeline-demo every 5s`, and nothing more while the newest
-release is already running. Ctrl-C stops the log, not the loop. Not yet tested against GitHub itself, only
+Expect: `watching https://github.com/teerakarna/pipeline-demo every 5s`, then `wanted v2, running v1: deploying`
+and `v2 is live` (the manifest starts at v1, the loop moves it to the newest release). After that, nothing more
+until the next release. Ctrl-C stops the log, not the loop. Not yet tested against GitHub itself, only
 against a local stand-in: if you see git errors here, say so.
 
 ## 7. The tunnel (Cloudflare, you run these)
@@ -132,7 +140,7 @@ Check (from the Mac, on the hotspot, not the cable):
 
     curl -s 'https://pipeline.kubernetic.io/api/status?cid=check'
 
-Expect: JSON with `"version":"v1"`, not `"placeholder"`.
+Expect: JSON with `"version":"v2"`, not `"placeholder"`.
 
 ## 8. Cold boot: no hands
 
