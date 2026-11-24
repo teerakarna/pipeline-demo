@@ -45,7 +45,8 @@ def client_id():
 
 def throttle(cid):
     now = time.monotonic()
-    if now - _last_action.get(cid, 0) < MIN_GAP:
+    last = _last_action.get(cid)
+    if last is not None and now - last < MIN_GAP:
         abort(429)
     _last_action[cid] = now
 
