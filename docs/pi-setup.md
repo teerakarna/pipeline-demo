@@ -157,6 +157,23 @@ Expect: the same JSON as step 7. Then check the pieces:
 
 Expect: `active` three times and three pods `Running`. Write down how long it really took.
 
+## Fallback images (do this before the talk)
+
+If GitHub is slow or down, the Pi can run an image that was built on the Mac. Colima must be running, and the
+Mac joined to the Pi by the cable. The version is the one the demo is about to show (the next after the newest release):
+
+    scripts/fallback-load.sh v3 <user>@pipeline-pi.local
+
+Expect: `built fallback-blue` and so on for each colour, then four `fallback-...` lines from the Pi's image list.
+(`k3s ctr -n k8s.io images import` is from memory, not yet confirmed on the Pi: if the Pi's list is empty, say so.)
+
+To use one on the day, on the Pi:
+
+    cd /opt/pipeline-demo && pi/fallback-deploy.sh green
+
+Expect: `fallback-green is live`. This stops the release loop, otherwise it would roll back to the newest release.
+Afterwards, `sudo systemctl start release-loop` puts it back.
+
 ## Shutdown
 
 Pulling the power can corrupt the card. Always:
