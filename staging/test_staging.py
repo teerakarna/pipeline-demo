@@ -10,7 +10,7 @@ EXPECTED = os.environ["EXPECTED_VERSION"]
 RUN = str(time.time_ns())  # unique browser ids per run, so reruns never hit the rate limit
 
 
-def call(path, body=None, cid="stage"):
+def call(path, body=None, cid="staging"):
     cid = f"{cid}-{RUN}"
     sep = "&" if "?" in path else "?"
     url = f"{BASE}{path}{sep}cid={cid}" if body is None else f"{BASE}{path}"

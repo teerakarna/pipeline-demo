@@ -66,11 +66,11 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  stage:
-    name: Stage tests
+  staging:
+    name: Staging tests
     needs: build
     runs-on: ubuntu-24.04-arm
-    environment: stage
+    environment: staging
     permissions:
       contents: read
       packages: read
@@ -84,24 +84,24 @@ jobs:
       - name: Start the image
         run: |
           mkdir -m 777 data
-          docker run -d --name stage -p 8000:8000 -v "$PWD/data:/data" \
+          docker run -d --name staging -p 8000:8000 -v "$PWD/data:/data" \
             ${{ env.IMAGE }}:${{ needs.build.outputs.tag }}
           for _ in $(seq 30); do curl -sf localhost:8000/healthz && break; sleep 1; done
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
       - run: pip install pytest==8.*
-      - name: Run the stage checks
+      - name: Run the staging checks
         env:
           BASE_URL: http://localhost:8000
           EXPECTED_VERSION: ${{ needs.build.outputs.version }}
-        run: pytest stage -q
+        run: pytest staging -q
       - if: failure()
-        run: docker logs stage
+        run: docker logs staging
 
   release:
     name: Approve and release
-    needs: [build, stage]
+    needs: [build, staging]
     runs-on: ubuntu-24.04-arm
     environment:
       name: production
