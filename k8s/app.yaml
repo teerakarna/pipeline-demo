@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pipeline-demo
+spec:
+  replicas: 3
+  selector:
+    matchLabels: {app: pipeline-demo}
+  strategy:
+    rollingUpdate: {maxUnavailable: 0, maxSurge: 1}
+  template:
+    metadata:
+      labels: {app: pipeline-demo}
+    spec:
+      containers:
+        - name: app
+          image: ghcr.io/teerakarna/pipeline-demo:v1
+          imagePullPolicy: IfNotPresent
+          ports: [{containerPort: 8000}]
+          readinessProbe:
+            httpGet: {path: /healthz, port: 8000}
+            periodSeconds: 2
+          lifecycle:
+            preStop:
+              exec: {command: [sleep, "5"]}
+          env:
+            - name: RESET_TOKEN
+              valueFrom:
+                secretKeyRef: {name: pipeline-demo, key: reset-token, optional: true}
+          volumeMounts: [{name: data, mountPath: /data}]
+      volumes:
+        - name: data
+          hostPath: {path: /var/lib/pipeline-demo, type: DirectoryOrCreate}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pipeline-demo
+spec:
+  selector: {app: pipeline-demo}
+  ports: [{port: 80, targetPort: 8000}]
