@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block body %}
+<h1 class="big">Pipeline demo <span id="version">{{ version }}</span></h1>
+<p class="big"><b id="online">?</b> connected</p>
+<div id="votes" class="big"></div>
+<div id="reactions" class="big"></div>
+<script>
+  function render(s) {
+    document.getElementById("version").textContent = s.version;
+    document.getElementById("online").textContent = s.online;
+    document.getElementById("votes").innerHTML =
+      Object.entries(s.votes).map(([k, v]) => `<div style="color:${k}">${k}: ${v}</div>`).join("");
+    document.getElementById("reactions").textContent =
+      Object.entries(s.reactions).map(([k, v]) => k + " " + v).join("   ");
+  }
+</script>
+{% endblock %}

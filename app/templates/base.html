@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pipeline demo</title>
+<style>
+  :root { --btn: {{ colour|default('blue') }}; }
+  body { font: 18px system-ui, sans-serif; max-width: 40rem; margin: 1rem auto; padding: 0 1rem; }
+  button { font: inherit; padding: .6rem 1rem; margin: .25rem; border: 0; border-radius: .5rem;
+           background: var(--btn); color: #fff; cursor: pointer; }
+  .meta { color: #555; }
+  .big { font-size: 3rem; }
+</style>
+</head>
+<body>
+{% block body %}{% endblock %}
+<script>
+  let cid = null;
+  try { cid = localStorage.getItem("cid"); } catch (e) {}
+  if (!cid) {
+    cid = Math.random().toString(36).slice(2);
+    try { localStorage.setItem("cid", cid); } catch (e) {}
+  }
+  let firstVersion = null;
+  async function poll() {
+    try {
+      const s = await (await fetch("/api/status?cid=" + cid)).json();
+      if (firstVersion === null) firstVersion = s.version;
+      else if (s.version !== firstVersion || s.colour !== document.documentElement.dataset.colour) {
+        location.reload(); return;
+      }
+      render(s);
+    } catch (e) { /* server busy or rolling: try again next tick */ }
+  }
+  async function send(path, body) {
+    await fetch(path, {method: "POST", headers: {"Content-Type": "application/json"},
+                       body: JSON.stringify({cid, ...body})});
+    poll();
+  }
+  document.documentElement.dataset.colour = "{{ colour }}";
+  poll(); setInterval(poll, 2000);
+</script>
+</body>
+</html>

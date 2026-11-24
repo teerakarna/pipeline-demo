@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Pipeline demo <span id="version">{{ version }}</span></h1>
+<p class="meta">Served by <b id="pod">{{ pod }}</b> &middot; <b id="online">?</b> connected</p>
+
+<h2>Vote for the button colour</h2>
+{% for c in colours %}<button style="background:{{ c }}" onclick="send('/api/vote', {choice:'{{ c }}'})">{{ c }}</button>{% endfor %}
+<p class="meta" id="votes"></p>
+
+<h2>React</h2>
+{% for r in reactions %}<button onclick="send('/api/react', {kind:'{{ r }}'})">{{ r }}</button>{% endfor %}
+<p class="meta" id="reactions"></p>
+
+<p><a href="/reading">Further reading</a></p>
+<script>
+  function render(s) {
+    document.getElementById("version").textContent = s.version;
+    document.getElementById("pod").textContent = s.pod;
+    document.getElementById("online").textContent = s.online;
+    document.getElementById("votes").textContent =
+      Object.entries(s.votes).map(([k, v]) => k + ": " + v).join("  ");
+    document.getElementById("reactions").textContent =
+      Object.entries(s.reactions).map(([k, v]) => k + ": " + v).join("  ");
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,146 @@
+name: Release pipeline
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+  PUBLIC_URL: https://pipeline.kubernetic.io
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - run: pytest -q
+
+  build:
+    name: Build and push image
+    needs: test
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      version: ${{ steps.next.outputs.version }}
+      tag: ${{ steps.next.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: next
+        name: Work out the next version
+        run: |
+          last=$(git tag -l 'v[0-9]*' | sort -V | tail -1)
+          n=$(( ${last#v} + 1 ))
+          echo "version=v${n:-1}" >> "$GITHUB_OUTPUT"
+          echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE }}:${{ steps.next.outputs.tag }}
+          build-args: APP_VERSION=${{ steps.next.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  stage:
+    name: Stage tests
+    needs: build
+    runs-on: ubuntu-24.04-arm
+    environment: stage
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Start the image
+        run: |
+          mkdir -m 777 data
+          docker run -d --name stage -p 8000:8000 -v "$PWD/data:/data" \
+            ${{ env.IMAGE }}:${{ needs.build.outputs.tag }}
+          for _ in $(seq 30); do curl -sf localhost:8000/healthz && break; sleep 1; done
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install pytest==8.*
+      - name: Run the stage checks
+        env:
+          BASE_URL: http://localhost:8000
+          EXPECTED_VERSION: ${{ needs.build.outputs.version }}
+        run: pytest stage -q
+      - if: failure()
+        run: docker logs stage
+
+  release:
+    name: Approve and release
+    needs: [build, stage]
+    runs-on: ubuntu-24.04-arm
+    environment:
+      name: production
+      url: ${{ env.PUBLIC_URL }}
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v3
+      - name: Promote the tested image (retag, no rebuild)
+        run: |
+          docker buildx imagetools create \
+            -t ${{ env.IMAGE }}:${{ needs.build.outputs.version }} \
+            ${{ env.IMAGE }}:${{ needs.build.outputs.tag }}
+      - name: Tag and publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create ${{ needs.build.outputs.version }} \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "${{ needs.build.outputs.version }}" --generate-notes
+
+  verify:
+    name: Verify production
+    needs: [build, release]
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 4
+    steps:
+      - name: Wait for the Pi to show the new version
+        run: |
+          start=$(date +%s)
+          for _ in $(seq 90); do
+            v=$(curl -sf "$PUBLIC_URL/api/status?cid=ci" | python3 -c 'import sys,json;print(json.load(sys.stdin)["version"])' || true)
+            [ "$v" = "${{ needs.build.outputs.version }}" ] && break
+            sleep 2
+          done
+          echo "production shows: $v after $(( $(date +%s) - start ))s"
+          [ "$v" = "${{ needs.build.outputs.version }}" ]
