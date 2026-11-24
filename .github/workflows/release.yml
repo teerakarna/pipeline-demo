@@ -3,6 +3,7 @@ name: Release pipeline
 on:
   push:
     branches: [main]
+    paths: ["app/**", "Dockerfile", "requirements.txt"]
 
 concurrency:
   group: release
