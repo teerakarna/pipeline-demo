@@ -1,6 +1,6 @@
 # Raspberry Pi setup, from scratch
 
-Do one stage, run its check, compare with "Expect", then go on. Each stage is safe to repeat.
+Do one step, run its check, compare with "Expect", then go on. Each step is safe to repeat.
 Nothing here has run on the Pi yet: where a step rests on something not yet confirmed, it says so.
 
 Placeholders: `<user>` is the Linux user you create in the imager. The Pi's hostname is `pipeline-pi`.
@@ -19,7 +19,7 @@ Check: boot the Pi, then from the Mac
 
     ssh <user>@pipeline-pi.local uname -m
 
-Expect: `aarch64`. If it fails on the hotspot, plug the cable (stage 1).
+Expect: `aarch64`. If it fails on the hotspot, plug the cable (step 1).
 
 ## 1. Reach the Pi over the cable (no router)
 
@@ -75,7 +75,7 @@ Check:
     kubectl get pods -A
 
 Expect: one node `Ready`, and only core pods (coredns, local-path, metrics-server) `Running`. If the node never
-turns Ready, stage 3 is the first suspect. `--write-kubeconfig-mode` is from memory, not confirmed in the docs:
+turns Ready, step 3 is the first suspect. `--write-kubeconfig-mode` is from memory, not confirmed in the docs:
 if `kubectl` says permission denied, use `sudo chmod 644 /etc/rancher/k3s/k3s.yaml`.
 
 ## 5. Put the app on
@@ -142,7 +142,7 @@ Then touch nothing. After about 2 to 3 minutes, from the Mac:
 
     curl -s 'https://pipeline.kubernetic.io/api/status?cid=check'
 
-Expect: the same JSON as stage 7. Then check the pieces:
+Expect: the same JSON as step 7. Then check the pieces:
 
     systemctl is-active k3s release-loop cloudflared
     kubectl get pods
@@ -167,9 +167,9 @@ So the class can tell Mac from Pi, give the Pi a red prompt:
 
 | Symptom | First thing to check |
 |---|---|
-| Node never Ready | stage 3: `grep -c memory /sys/fs/cgroup/cgroup.controllers` should print 1 |
-| Image will not pull | package not public, or the clock is wrong (stage 2) |
+| Node never Ready | step 3: `grep -c memory /sys/fs/cgroup/cgroup.controllers` should print 1 |
+| Image will not pull | package not public, or the clock is wrong (step 2) |
 | Pods `ImagePullBackOff` after a release | the release's image is missing: the loop leaves the old copies serving |
-| Pages show `placeholder` | the Worker is still bound to the name (stage 7) |
+| Pages show `placeholder` | the Worker is still bound to the name (step 7) |
 | Page fine on the Mac, not on phones | the tunnel route or a network filter, test on mobile data |
 | Nothing after a reboot | `systemctl status k3s release-loop cloudflared`, then `journalctl -u <name>` |
