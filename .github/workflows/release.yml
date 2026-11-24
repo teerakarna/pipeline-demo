@@ -3,7 +3,7 @@ name: Release pipeline
 on:
   push:
     branches: [main]
-    paths-ignore: ["docs/**", "pi/**", "k8s/**", ".github/**", "README.md", "Makefile"]
+    paths: ["app/**", "Dockerfile", "requirements.txt"]
 
 concurrency:
   group: release
